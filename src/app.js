@@ -35,7 +35,8 @@ import { mountCanvas } from "./canvasview.js";
 import { mountBlocks } from "./blocksview.js";
 import { mountBase } from "./basesview.js";
 import { mountNoteProps } from "./noteprops.js";
-import { sanitizeComments, forNote as commentsOf, addDiscussion, addReply, setResolved, removeDiscussion, removeComment, renamePath as renameCommentsPath, AUTHOR as COMMENT_AUTHOR } from "./comments.js";
+import { RemoteClient, RemoteSync, AuthError, probeServer } from "./remote.js";
+import { sanitizeComments, forNote as commentsOf, addDiscussion, addReply, setResolved, removeDiscussion, removeComment, renamePath as renameCommentsPath, AUTHOR as COMMENT_AUTHOR, setAuthor } from "./comments.js";
 import { showContextMenu, openAtEvent } from "./contextmenu.js";
 import { serializeBase, parseBase, collectRows, BASE_TEMPLATES, templateBase } from "./bases.js";
 import { wikiHomeText, wikiPageText, wikiIndexBase, isWikiHome, WIKI_HOME } from "./wiki.js";
@@ -226,7 +227,8 @@ const isNotePath = (id) => !!id && !isView(id) && !isCanvas(id) && !isBase(id) &
 // ---------------------------------------------------------------------------
 // Inicialização
 
-function init() {
+function init(remote = null) {
+  state.remote = remote;
   hydrateIcons(document);
   state.settings = storage.loadSettings();
   applySettings();
@@ -235,8 +237,10 @@ function init() {
   document.head.append(state.snippetStyle);
   applySnippets();
 
-  const data = storage.loadVault();
-  state.vault = data ? Vault.fromJSON(data) : sampleVault();
+  const data = remote ? true : storage.loadVault();
+  state.vault = remote ? remote.vault : data ? Vault.fromJSON(data) : sampleVault();
+  setAuthor(storage.get("perfil.v1", {})?.name || "");
+  adoptDesktopProfile();
   state.index = new MetadataIndex(state.vault);
 
   const loaded = storage.loadWorkspaceDetailed();
@@ -282,7 +286,8 @@ function init() {
   bindUi();
   render();
   updateDiskUi();
-  restoreDisk();
+  if (remote) startRemote();
+  else restoreDisk();
   initPlugins();
   if (SAFE_MODE) toast("Modo seguro: os snippets de CSS não foram aplicados.", "info");
   if (state.wsRecovered) {
@@ -418,7 +423,10 @@ function scheduleSave() {
   clearTimeout(state.saveTimer);
   state.saveTimer = setTimeout(async () => {
     persistVault();
-    if (state.disk) {
+    if (state.sync) {
+      await state.sync.flush();
+      setStatus(state.remote.kind === "rede" ? "Salvo no servidor" : "Salvo na biblioteca");
+    } else if (state.disk) {
       await state.disk.flush();
       setStatus("Salvo no disco");
     } else {
@@ -428,7 +436,7 @@ function scheduleSave() {
 }
 
 function persistVault() {
-  const ok = storage.saveVault(state.vault.toJSON());
+  const ok = state.remote ? true : storage.saveVault(state.vault.toJSON());
   if (!ok) setStatus("Não foi possível salvar no navegador", "error");
   persistWorkspace();
 }
@@ -492,7 +500,7 @@ function bindUi() {
     e.preventDefault();
     importFromFiles([...e.dataTransfer.files]);
   });
-  els.diskPill.addEventListener("click", () => openSettings("biblioteca"));
+  els.diskPill.addEventListener("click", () => openSettings(state.remote ? "bibliotecas" : "biblioteca"));
 
   // Nota
 
@@ -2176,6 +2184,7 @@ async function connectFolder(handle, { quiet = false } = {}) {
 }
 
 async function chooseFolder() {
+  if (state.remote) return toast("Esta biblioteca vem de um servidor. Troque de biblioteca em Configurações › Bibliotecas.", "info");
   if (!isSupported()) {
     toast("Este navegador não tem acesso a pastas. Use o Chrome ou o Edge.", "error");
     return;
@@ -2224,15 +2233,161 @@ async function disconnectFolder() {
 }
 
 function diskInfo() {
+  if (state.remote) return { supported: false, connected: false, waiting: false, name: "", remote: remoteInfo() };
   const handle = state.diskHandle || state.pendingHandle;
   return { supported: isSupported(), connected: !!state.disk, waiting: !state.disk && !!state.pendingHandle, name: handle?.name || "" };
 }
 
 function updateDiskUi() {
   const d = diskInfo();
+  if (d.remote) {
+    els.diskPill.classList.add("on");
+    els.diskPill.classList.remove("wait");
+    els.diskLabel.textContent = d.remote.kind === "rede" ? `Servidor: ${d.remote.name}` : `Biblioteca: ${d.remote.name}`;
+    return;
+  }
   els.diskPill.classList.toggle("on", d.connected);
   els.diskPill.classList.toggle("wait", d.waiting);
   els.diskLabel.textContent = d.connected ? `Pasta: ${d.name}` : d.waiting ? `Reconectar: ${d.name}` : d.supported ? "Só no navegador" : "Sem acesso a pastas";
+}
+
+// ---------------------------------------------------------------------------
+// Servidor: biblioteca local do desktop, biblioteca servida na rede ou conexão a outro servidor
+
+const CONEXAO = "conexao.v1";
+
+function remoteInfo() {
+  const r = state.remote;
+  return r ? { kind: r.kind, name: r.name, url: r.url, user: r.user, served: r.served } : null;
+}
+
+// Antes de iniciar: descobre de onde vem a biblioteca. Uma conexão salva a outro servidor vence; depois, o servidor que
+// entregou esta página (desktop ou rede); sem nenhum, o app segue só com o navegador.
+async function connectRemote() {
+  const saved = storage.get(CONEXAO, null);
+  if (saved?.url) {
+    try {
+      const client = new RemoteClient({ base: saved.url, token: saved.token });
+      const vault = await client.vault();
+      return { client, vault, kind: "rede", name: saved.name || vault.name, url: saved.url, user: saved.user };
+    } catch (err) {
+      state.bootNotice = `Não foi possível entrar em ${saved.url}: ${err.message}. Abri a biblioteca local.`;
+    }
+  }
+  const info = await probeServer("");
+  if (!info) return null;
+  const client = new RemoteClient({ base: "", token: sessionStorage.getItem("sophyra.token") || "" });
+  for (;;) {
+    try {
+      const vault = await client.vault();
+      const me = info.requiresAuth ? (await client.json("/me")).user : null;
+      return { client, vault, kind: info.requiresAuth ? "rede" : "local", name: info.name, url: location.origin, user: me, served: true };
+    } catch (err) {
+      if (!(err instanceof AuthError)) throw err;
+      await askLogin(client, info);
+    }
+  }
+}
+
+// Tela de entrada de um servidor que exige conta. Só sai quando o login der certo.
+function askLogin(client, info) {
+  return new Promise((resolve) => {
+    els.dialogTitle.textContent = `Entrar em ${info.name}`;
+    els.dialogBody.innerHTML = `<form data-login class="login-form"><input class="field" name="name" placeholder="Nome" autocomplete="username" required aria-label="Nome"><input class="field" name="password" type="password" placeholder="Senha" autocomplete="current-password" required aria-label="Senha"><p class="small" data-err role="alert"></p><div class="dialog-actions"><button class="btn primary" type="submit">Entrar</button></div></form>`;
+    const form = $("[data-login]", els.dialogBody);
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = new FormData(form);
+      try {
+        await client.login(String(f.get("name")), String(f.get("password")));
+        sessionStorage.setItem("sophyra.token", client.token);
+        els.dialog.close();
+        resolve();
+      } catch (err) {
+        $("[data-err]", form).textContent = err.message;
+      }
+    });
+    els.dialog.addEventListener("cancel", (e) => e.preventDefault());
+    els.dialog.showModal();
+    $("input", form).focus();
+  });
+}
+
+function startRemote() {
+  const { client } = state.remote;
+  state.sync = new RemoteSync(state.vault, client, {
+    onError: (err) => {
+      setStatus("Erro ao sincronizar", "error");
+      toast(err instanceof AuthError ? "Sua sessão acabou. Entre de novo." : `Falha ao sincronizar: ${err.message}`, "error");
+    },
+    onReset: () => location.reload(),
+    onStatus: (s) => {
+      if (s === "pendente") toast("Voltei a falar com o servidor, mas há alterações suas que não chegaram. Copie o que escreveu antes de recarregar.", "error");
+      setStatus(s === "online" ? "Conectado" : s === "pendente" ? "Alterações pendentes" : "Sem conexão com o servidor. Tentando de novo…");
+    },
+  });
+  state.sync.listen();
+  updateDiskUi();
+  if (state.bootNotice) toast(state.bootNotice, "info");
+}
+
+async function connectServer(url, name, password) {
+  const base = String(url).trim().replace(/\/+$/, "");
+  if (!/^https?:\/\//i.test(base)) throw new Error("O endereço precisa começar com http:// ou https://");
+  const info = await probeServer(base);
+  if (!info) throw new Error("Não encontrei um servidor Sophyra nesse endereço.");
+  const client = new RemoteClient({ base });
+  const { user } = await client.login(name, password);
+  storage.set(CONEXAO, { url: base, token: client.token, name: info.name, user });
+  location.reload();
+}
+
+async function disconnectServer() {
+  const saved = storage.get(CONEXAO, null);
+  if (saved?.token) await new RemoteClient({ base: saved.url, token: saved.token }).request("/logout", { method: "POST" }).catch(() => {});
+  storage.set(CONEXAO, null);
+  sessionStorage.removeItem("sophyra.token");
+  location.reload();
+}
+
+// No desktop o perfil também fica no registro do aplicativo; se este armazenamento ainda não tem nome, usa o de lá.
+async function adoptDesktopProfile() {
+  try {
+    if (profile().name || !window.sophyraDesktop) return;
+    const saved = (await window.sophyraDesktop.state()).profile;
+    if (saved?.name) {
+      storage.set("perfil.v1", { name: saved.name, bio: saved.bio || "" });
+      setAuthor(saved.name);
+    }
+  } catch { /* sem ponte do desktop */ }
+}
+
+function profile() {
+  return { name: "", bio: "", ...(storage.get("perfil.v1", {}) || {}) };
+}
+
+async function setProfile(patch) {
+  const next = { ...profile(), name: String(patch.name ?? "").trim().slice(0, 60), bio: String(patch.bio ?? "").trim().slice(0, 280) };
+  storage.set("perfil.v1", next);
+  setAuthor(next.name);
+  await window.sophyraDesktop?.setProfile(next);
+}
+
+// O que as abas de conta e servidor usam (veja settingsnet.js).
+function makeNet() {
+  return {
+    desktop: window.sophyraDesktop || null,
+    remote: remoteInfo,
+    profile,
+    setProfile,
+    libraryName: () => state.vault.name,
+    connect: connectServer,
+    disconnect: disconnectServer,
+    api: (path, options) => (state.remote ? state.remote.client.json(path, options) : Promise.reject(new Error("Sem servidor ligado."))),
+    askText,
+    askConfirm,
+    toast,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -2243,6 +2398,7 @@ function exportVault() {
 }
 
 function importVault() {
+  if (state.remote) return toast("Importar não está disponível numa biblioteca servida.", "error");
   if (state.disk) return toast("Desconecte a pasta antes de importar uma biblioteca.", "error");
   els.importFile.click();
 }
@@ -2262,6 +2418,7 @@ async function importVaultFile(e) {
 }
 
 async function restoreSample() {
+  if (state.remote) return toast("Restaurar o exemplo não está disponível numa biblioteca servida.", "error");
   if (state.disk) return toast("Desconecte a pasta antes de restaurar o exemplo.", "error");
   const ok = await askConfirm("Substituir a biblioteca atual pelo exemplo?", "Restaurar exemplo", "Restaurar");
   if (ok) replaceVault(sampleVault());
@@ -3740,6 +3897,7 @@ function toast(text, kind = "info") {
 
 function makeCtx() {
   return {
+    net: makeNet(),
     vault: () => state.vault,
     index: () => state.index,
     settings: () => state.settings,
@@ -3807,4 +3965,9 @@ function makeCtx() {
   };
 }
 
-init();
+connectRemote()
+  .catch((err) => {
+    console.error(err);
+    return null;
+  })
+  .then(init);

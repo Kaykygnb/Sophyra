@@ -6,6 +6,11 @@ let counter = 0;
 const newId = (p) => `${p}${Date.now().toString(36)}${(counter++).toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
 export const AUTHOR = "Você";
+let author = AUTHOR;
+// Nome do perfil local; vazio volta ao padrão.
+export function setAuthor(name) {
+  author = String(name || "").trim() || AUTHOR;
+}
 export const MAX_QUOTE = 200;
 
 const clean = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
@@ -39,7 +44,7 @@ export function addDiscussion(state, path, quote, text, now = Date.now()) {
   const t = String(text ?? "").trim();
   if (!q || !t) return { state, id: null };
   const id = newId("d");
-  const d = { id, quote: q, resolved: false, at: now, comments: [{ id: newId("c"), author: AUTHOR, text: t, at: now }] };
+  const d = { id, quote: q, resolved: false, at: now, comments: [{ id: newId("c"), author, text: t, at: now }] };
   return { state: { ...state, [path]: [...forNote(state, path), d] }, id };
 }
 
@@ -56,7 +61,7 @@ const mapNote = (state, path, fn) => {
 export function addReply(state, path, id, text, now = Date.now()) {
   const t = String(text ?? "").trim();
   if (!t) return state;
-  return mapNote(state, path, (list) => (list.some((d) => d.id === id) ? list.map((d) => (d.id === id ? { ...d, comments: [...d.comments, { id: newId("c"), author: AUTHOR, text: t, at: now }] } : d)) : list));
+  return mapNote(state, path, (list) => (list.some((d) => d.id === id) ? list.map((d) => (d.id === id ? { ...d, comments: [...d.comments, { id: newId("c"), author, text: t, at: now }] } : d)) : list));
 }
 
 export const setResolved = (state, path, id, resolved) =>

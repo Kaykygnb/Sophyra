@@ -1818,3 +1818,14 @@ button.row:hover { background: var(--accent-soft); }
 .tbl-error { margin: 0; color: var(--danger); font-size: var(--fs-sm); }
 .tbl-actions { display: flex; justify-content: flex-end; gap: var(--s2); }
 @media (max-width: 700px) { .tbl-row, .tbl-rel { grid-template-columns: 1fr; } }
+
+/* Configurações em abas: conta, bibliotecas, servidor e agentes */
+.settings .section[hidden] { display: none; }
+.settings .sub-h { font-size: var(--fs-md); font-weight: 650; margin: var(--s5) 0 var(--s2); }
+.profile-head { justify-content: flex-start; }
+.avatar { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); font-size: var(--fs-xl); font-weight: 650; }
+.new-user, .connect .form-row { flex-wrap: wrap; justify-content: flex-start; gap: var(--s2); }
+.new-user .field { width: 160px; }
+.connect .toolbar-actions .field { width: 160px; }
+.code-block { margin: var(--s3) 0 var(--s2); padding: var(--s3) var(--s4); background: var(--code-bg); border-radius: var(--r-md); font: var(--fs-sm) var(--font-mono); overflow-x: auto; white-space: pre; }
+.settings .form-row code { font-family: var(--font-mono); font-size: var(--fs-sm); }

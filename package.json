@@ -10,6 +10,9 @@
   },
   "scripts": {
     "start": "node tools/servir.mjs",
+    "desktop": "electron .",
+    "servidor": "node bin/sophyra-server.mjs",
+    "mcp": "node bin/sophyra-mcp.mjs",
     "test": "node --test \"tests/*.test.mjs\"",
     "medir": "node tools/medir-escala.mjs"
   },
@@ -21,5 +24,17 @@
     "url": "https://github.com/Kaykygnb/sophyra/issues"
   },
   "homepage": "https://github.com/Kaykygnb/sophyra#readme",
-  "keywords": ["notas", "markdown", "second-brain", "local-first", "canvas", "wiki", "knowledge-base"]
+  "keywords": [
+    "notas",
+    "markdown",
+    "second-brain",
+    "local-first",
+    "canvas",
+    "wiki",
+    "knowledge-base"
+  ],
+  "main": "electron/main.cjs",
+  "devDependencies": {
+    "electron": "^45.0.0"
+  }
 }

@@ -9,6 +9,13 @@ Primeira versão publicada.
 
 ### Adicionado
 
+- Aplicativo desktop (Electron) com várias bibliotecas, troca sem fechar, perfil local e observação da pasta.
+- Servir a biblioteca na rede com contas (dono, editor, leitor), tempo real e conexão a outro servidor; servidor sem
+  interface em `bin/sophyra-server.mjs`.
+- Servidor MCP com 15 ferramentas (leitura, busca, escrita sem apagar, diagrama) por stdio e HTTP.
+- Configurações em abas: Conta, Aparência, Editor, Armazenamento, Bibliotecas, Servidor e conexão, Agentes (MCP), Plugins,
+  Estilos e Sobre.
+- Licença MIT.
 - Editor de blocos com menu `/`, colunas, destaques, toggles, mídia, botões, datas e menções; salva como Markdown.
 - Links `[[ ]]`, backlinks, tags, grafo e busca.
 - Bases com seis visões (tabela, lista, quadro, calendário, galeria, cronograma), totais, relações, pessoas, fórmulas
@@ -20,7 +27,7 @@ Primeira versão publicada.
 - Pasta real do disco (File System Access API) com atualização de links ao renomear.
 - Plugins locais com permissões, importação de arquivo com confirmação, snippets de CSS, temas e paleta de comandos.
 - Catálogo de ícones Lucide com seletor.
-- Servidor local sem dependências (`npm start`) e 473 testes (`npm test`).
+- Servidor local sem dependências (`npm start`) e mais de 490 testes (`npm test`).
 
 ### Mudado
 

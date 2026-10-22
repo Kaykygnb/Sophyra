@@ -9,6 +9,7 @@ import { comboFromEvent } from "./hotkeys.js";
 import { PERMISSOES } from "./plugins.js";
 import { tasksInFolder, childFolders, folderName, folderOf } from "./collections.js";
 import { groupTasks, taskSummary } from "./tasks.js";
+import { renderConta, renderBibliotecas, renderServidor, renderAgentes } from "./settingsnet.js";
 
 const RTF = typeof Intl !== "undefined" && Intl.RelativeTimeFormat ? new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" }) : null;
 
@@ -508,9 +509,13 @@ export function renderShortcuts(el, ctx, ui = { q: "" }) {
 // --- Configurações ----------------------------------------------------------
 
 const SECTIONS = [
+  ["conta", "Conta", "at-sign"],
   ["aparencia", "Aparência", "sun"],
   ["editor", "Editor", "edit"],
-  ["biblioteca", "Biblioteca e pasta", "database"],
+  ["biblioteca", "Armazenamento", "database"],
+  ["bibliotecas", "Bibliotecas", "layers"],
+  ["servidor", "Servidor e conexão", "activity"],
+  ["agentes", "Agentes (MCP)", "terminal"],
   ["plugins", "Plugins", "puzzle"],
   ["snippets", "Estilos personalizados", "code"],
   ["sobre", "Sobre", "info"],
@@ -564,13 +569,14 @@ export function renderSettings(el, ctx, ui = { section: "aparencia" }) {
 
   el.innerHTML = `
   <div class="page-inner" style="width:min(100%,1040px)">
-    ${pageHead("Configurações", "As mudanças valem na hora e ficam salvas neste navegador.")}
+    ${pageHead("Configurações", "As mudanças valem na hora e ficam salvas neste computador.")}
     <div class="settings">
       <nav class="settings-nav" aria-label="Seções">
         ${SECTIONS.map(([id, label, ic]) => `<button data-sec="${id}" ${ui.section === id ? 'aria-current="true"' : ""}>${icon(ic, 16)}${label}</button>`).join("")}
       </nav>
       <div>
-        <section class="section" id="sec-aparencia" style="margin-top:0">
+        <section class="section" id="sec-conta" style="margin-top:0"><h2>Conta</h2><div data-net="conta"></div></section>
+        <section class="section" id="sec-aparencia">
           <h2>Aparência</h2>
           <div class="rows">
             ${row("Tema", "Segue o sistema por padrão.", seg("theme", [["auto", "Sistema", "monitor"], ["light", "Claro", "sun"], ["dark", "Escuro", "moon"]], s.theme))}
@@ -588,7 +594,7 @@ export function renderSettings(el, ctx, ui = { section: "aparencia" }) {
           </div>
         </section>
         <section class="section" id="sec-biblioteca">
-          <h2>Biblioteca e pasta</h2>
+          <h2>Armazenamento</h2>
           <div class="rows">
             ${row("Pasta do disco", diskText,
               disk.connected
@@ -602,6 +608,9 @@ export function renderSettings(el, ctx, ui = { section: "aparencia" }) {
             ${row("Apagar dados locais", "Remove a biblioteca, as abas e as configurações deste navegador. Arquivos de uma pasta conectada não são tocados.", `<button class="btn danger" data-act="wipe">${icon("trash", 16)} Apagar</button>`)}
           </div>
         </section>
+        <section class="section" id="sec-bibliotecas"><h2>Bibliotecas</h2><div data-net="bibliotecas"></div></section>
+        <section class="section" id="sec-servidor"><h2>Servidor e conexão</h2><div data-net="servidor"></div></section>
+        <section class="section" id="sec-agentes"><h2>Agentes (MCP)</h2><div data-net="agentes"></div></section>
         <section class="section" id="sec-plugins">
           <h2>Recursos internos</h2>
           <p class="lead">Partes do próprio app que você pode desligar. Desligar esconde o recurso; as notas e os arquivos continuam intactos.</p>
@@ -696,17 +705,23 @@ export function renderSettings(el, ctx, ui = { section: "aparencia" }) {
     </div>
   </div>`;
 
-  for (const b of el.querySelectorAll("[data-sec]")) {
-    b.addEventListener("click", () => {
-      ui.section = b.dataset.sec;
-      for (const x of el.querySelectorAll("[data-sec]")) {
-        if (x === b) x.setAttribute("aria-current", "true");
-        else x.removeAttribute("aria-current");
-      }
-      el.querySelector(`#sec-${b.dataset.sec}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }
-  if (ui.section && ui.section !== "aparencia") el.querySelector(`#sec-${ui.section}`)?.scrollIntoView({ block: "start" });
+  // Cada seção é uma aba: só a escolhida aparece. As ligadas a conta e servidor são desenhadas ao abrir.
+  const filled = new Set();
+  const netTabs = { conta: renderConta, bibliotecas: renderBibliotecas, servidor: renderServidor, agentes: renderAgentes };
+  const show = (id) => {
+    ui.section = id;
+    for (const sec of el.querySelectorAll(".settings .section")) sec.hidden = sec.id !== `sec-${id}`;
+    for (const x of el.querySelectorAll("[data-sec]")) {
+      if (x.dataset.sec === id) x.setAttribute("aria-current", "true");
+      else x.removeAttribute("aria-current");
+    }
+    if (netTabs[id] && !filled.has(id)) {
+      filled.add(id);
+      netTabs[id](el.querySelector(`[data-net="${id}"]`), ctx.net);
+    }
+  };
+  for (const b of el.querySelectorAll("[data-sec]")) b.addEventListener("click", () => show(b.dataset.sec));
+  show(ui.section || "aparencia");
 
   for (const group of el.querySelectorAll("[data-seg]")) {
     for (const b of group.querySelectorAll("[data-v]")) {

@@ -43,13 +43,38 @@ src/
   trash.js        lixeira e versões anteriores das notas
   nav.js          histórico, abas fechadas e fixadas, nota diária vizinha
   frontmatter.js  apelidos e propriedades do frontmatter
+  remote.js       cliente de um servidor Sophyra: carrega a biblioteca, grava e recebe mudanças em tempo real (sem DOM)
+  settingsnet.js  abas de Configurações de conta, bibliotecas, servidor e agentes
+server/           Node, sem dependências; reaproveita vault.js, index.js e dbdiagram.js do app
+  library.js      biblioteca em uma pasta: lê, grava e observa mudanças por fora
+  accounts.js     contas, senhas (scrypt) e tokens (SHA-256), papéis dono/editor/leitor
+  api.js          API HTTP, tempo real (SSE), arquivos estáticos e as defesas do modo local
+  mcp.js          servidor MCP (JSON-RPC) com as ferramentas de leitura e escrita
+  host.js         liga uma biblioteca a servidores: local (127.0.0.1) e de rede
+  workspaces.js   lista de bibliotecas, biblioteca ativa, perfil e porta de servir
+electron/         casca desktop: main.cjs (janela, IPC, servidor local) e preload.cjs (ponte)
+bin/              sophyra-server.mjs (servir na rede) e sophyra-mcp.mjs (MCP por stdio)
 plugins/          plugins locais e registry.json
 tools/            gerar-icones.mjs (catálogo de ícones) e medir-escala.mjs (desempenho)
-tests/            core, plugins, ui, wikilinks, graph, graphview, snippets, rich, canvas, settings e plugineditor, split, editor, commands, nav, daily, trash, mermaid2, mermaid3, layouts, cmdkeys, permissions, pluginimport find, notionblocks e iconlib (473 testes)
+tests/            núcleo, editor, bases, canvas, plugins, servidor (biblioteca, contas, MCP, API) e cliente remoto (mais de 490 testes)
 docs/design.md    decisões de design e como estender
+docs/servidor.md  desktop, servir, conectar, API e segurança
 ```
 
 Princípio: **o arquivo é a fonte de verdade**. Índice, grafo, backlinks e busca são derivados e recalculados do conteúdo.
+
+## Como a interface encontra a biblioteca
+
+Ao abrir, `app.js` descobre de onde vem a biblioteca, nesta ordem:
+
+1. uma **conexão salva** a outro servidor (Configurações › Servidor e conexão);
+2. o **servidor que entregou a página** (`GET /api/info`): o local do desktop, sem login, ou um servidor de rede, com tela de
+   entrada;
+3. nenhuma: o app segue só com o navegador (`localStorage` e, se conectada, uma pasta pelo File System Access).
+
+Nos casos 1 e 2 o `Vault` vem de `GET /api/vault` e o `RemoteSync` (`remote.js`) faz o papel do `DiskSync`: cada evento do
+Vault vira uma chamada à API e cada evento do servidor (SSE) é aplicado sem ser devolvido. No servidor, `Library`
+(`server/library.js`) grava na pasta e observa mudanças feitas por outros programas. Veja [servidor.md](servidor.md).
 
 ## Desempenho
 

@@ -1,7 +1,8 @@
 # Avisos de terceiros
 
-O Sophyra não depende de nenhum pacote em tempo de execução. Os únicos materiais de terceiros incluídos no
-repositório são os ícones abaixo.
+O Sophyra não depende de nenhum pacote em tempo de execução. O [Electron](https://www.electronjs.org) (licença MIT) é
+dependência só de desenvolvimento, para o aplicativo desktop, e não é incluído no repositório. O único material de
+terceiros incluído no repositório são os ícones abaixo.
 
 ## Lucide (ícones)
 
