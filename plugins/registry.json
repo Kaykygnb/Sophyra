@@ -1,0 +1,26 @@
+[
+  {
+    "id": "estatisticas",
+    "nome": "Estatísticas da nota",
+    "versao": "1.0.0",
+    "descricao": "Painel com palavras, caracteres, títulos, links e tempo de leitura da nota ativa.",
+    "main": "plugins/estatisticas.js",
+    "permissoes": [
+      "painel",
+      "notas:ler"
+    ]
+  },
+  {
+    "id": "nota-diaria",
+    "nome": "Nota diária",
+    "versao": "1.0.0",
+    "descricao": "Comando que cria a nota do dia numa pasta configurável, com modelo.",
+    "main": "plugins/nota-diaria.js",
+    "permissoes": [
+      "comandos",
+      "notas:ler",
+      "notas:escrever",
+      "navegar"
+    ]
+  }
+]

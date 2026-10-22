@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Sophyra — segundo cérebro em Markdown</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="app" data-side="open" data-ctx="open">
+
+    <!-- Ribbon: navegação principal -->
+    <nav class="ribbon" aria-label="Navegação principal">
+      <button class="rb" data-nav="files" aria-pressed="true" title="Arquivos" aria-label="Arquivos"><i data-icon="folder" data-size="20"></i></button>
+      <button class="rb" data-nav="search" aria-pressed="false" title="Buscar (Ctrl+Shift+F)" aria-label="Buscar"><i data-icon="search" data-size="20"></i></button>
+      <div class="ribbon-sep" role="presentation"></div>
+      <button class="rb" data-view="@home" title="Início" aria-label="Início"><i data-icon="home" data-size="20"></i></button>
+      <button class="rb" data-view="@graph" title="Grafo" aria-label="Grafo"><i data-icon="graph" data-size="20"></i></button>
+      <button class="rb" data-view="@tasks" title="Tarefas" aria-label="Tarefas"><i data-icon="check-square" data-size="20"></i><span class="badge" id="badge-tasks" hidden></span></button>
+      <button class="rb" data-view="@tags" title="Tags" aria-label="Tags"><i data-icon="tag" data-size="20"></i></button>
+      <div id="ribbon-plugins"></div>
+      <div class="ribbon-spacer"></div>
+      <button class="rb" id="btn-palette" title="Comandos (Ctrl+P)" aria-label="Comandos"><i data-icon="terminal" data-size="20"></i></button>
+      <button class="rb" data-view="@shortcuts" title="Atalhos" aria-label="Atalhos"><i data-icon="keyboard" data-size="20"></i></button>
+      <button class="rb" id="btn-theme" title="Alternar tema" aria-label="Alternar tema"><i data-icon="moon" data-size="20"></i></button>
+      <button class="rb" data-view="@settings" title="Configurações" aria-label="Configurações"><i data-icon="sliders" data-size="20"></i></button>
+    </nav>
+
+    <!-- Barra lateral esquerda: arquivos e busca -->
+    <aside class="side" id="side" aria-label="Painel lateral">
+      <div class="side-pane active" id="pane-files">
+        <div class="side-head">
+          <button class="vault-btn" id="btn-vault" title="Abrir a tela inicial"><i data-icon="database" data-size="16"></i><span id="vault-name">Sophyra</span></button>
+          <button class="icon-btn" id="btn-new-note" title="Nova nota (Ctrl+N)" aria-label="Nova nota"><i data-icon="file-plus" data-size="18"></i></button>
+          <button class="icon-btn" id="btn-new-folder" title="Nova pasta" aria-label="Nova pasta"><i data-icon="folder-plus" data-size="18"></i></button>
+          <button class="icon-btn" id="btn-new-canvas" title="Novo canvas" aria-label="Novo canvas"><i data-icon="layers" data-size="18"></i></button>
+        </div>
+        <button class="disk-pill" id="disk-pill" title="Gerenciar a pasta do disco"><span class="dot"></span><span id="disk-label">Só no navegador</span></button>
+        <div class="side-body" id="tree" role="tree" aria-label="Arquivos da biblioteca"></div>
+      </div>
+      <div class="side-pane" id="pane-search">
+        <div class="side-title"><span>Buscar</span></div>
+        <div class="search-box">
+          <div class="input-icon">
+            <i data-icon="search" data-size="16"></i>
+            <input id="search" class="field" type="search" placeholder="Buscar nas notas" aria-label="Buscar nas notas" autocomplete="off">
+          </div>
+        </div>
+        <div class="search-hints" id="search-hints">
+          <button class="chip" data-hint="tag:">tag:</button>
+          <button class="chip" data-hint="path:">path:</button>
+          <button class="chip" data-hint="-">-excluir</button>
+        </div>
+        <div class="side-body" id="results" aria-live="polite"></div>
+      </div>
+    </aside>
+
+    <!-- Área principal -->
+    <main class="main">
+      <div class="leaf" id="leaf1">
+      <div class="tabbar" id="tabs" role="tablist" aria-label="Abas abertas"></div>
+
+      <!-- Nota: barra, formatação, editor e leitura -->
+      <section class="pane" id="note-pane" hidden>
+        <div class="toolbar">
+          <div class="crumbs" id="crumbs"></div>
+          <div class="toolbar-actions">
+            <button class="icon-btn" id="btn-more" title="Mais ações" aria-label="Mais ações da nota" aria-haspopup="menu"><i data-icon="more" data-size="17"></i></button>
+            <button class="icon-btn" id="btn-ctx" title="Contexto da nota" aria-label="Mostrar ou ocultar o contexto" aria-pressed="true"><i data-icon="panel-right" data-size="17"></i></button>
+          </div>
+        </div>
+        <div class="format-bar off" id="format-bar" role="toolbar" aria-label="Formatação">
+          <button class="icon-btn" data-fmt="bold" title="Negrito (Ctrl+B)" aria-label="Negrito"><i data-icon="bold" data-size="16"></i></button>
+          <button class="icon-btn" data-fmt="italic" title="Itálico (Ctrl+I)" aria-label="Itálico"><i data-icon="italic" data-size="16"></i></button>
+          <button class="icon-btn" data-fmt="heading" title="Título" aria-label="Título"><i data-icon="heading" data-size="16"></i></button>
+          <span class="sep" role="presentation"></span>
+          <button class="icon-btn" data-fmt="list" title="Lista" aria-label="Lista"><i data-icon="list" data-size="16"></i></button>
+          <button class="icon-btn" data-fmt="task" title="Tarefa" aria-label="Tarefa"><i data-icon="check-square" data-size="16"></i></button>
+          <button class="icon-btn" data-fmt="quote" title="Citação" aria-label="Citação"><i data-icon="quote" data-size="16"></i></button>
+          <button class="icon-btn" data-fmt="code" title="Código" aria-label="Código"><i data-icon="code" data-size="16"></i></button>
+          <span class="sep" role="presentation"></span>
+          <button class="icon-btn" data-fmt="wikilink" title="Link para nota" aria-label="Link para nota"><i data-icon="link" data-size="16"></i></button>
+          <button class="icon-btn" data-fmt="tag" title="Tag" aria-label="Tag"><i data-icon="hash" data-size="16"></i></button>
+        </div>
+        <div class="find-bar" id="find-bar" role="search" aria-label="Buscar na nota" hidden>
+          <div class="find-row">
+            <input id="find-q" class="field" placeholder="Buscar na nota" aria-label="Buscar na nota" autocomplete="off" spellcheck="false">
+            <span class="find-count" id="find-count" aria-live="polite"></span>
+            <button class="icon-btn flip" id="find-prev" title="Anterior (Shift+Enter)" aria-label="Ocorrência anterior"><i data-icon="chevron-down" data-size="16"></i></button>
+            <button class="icon-btn" id="find-next" title="Próxima (Enter)" aria-label="Próxima ocorrência"><i data-icon="chevron-down" data-size="16"></i></button>
+            <button class="btn sm toggle" id="find-case" aria-pressed="false" title="Diferenciar maiúsculas">Aa</button>
+            <button class="btn sm toggle" id="find-word" aria-pressed="false" title="Palavra inteira">ab</button>
+            <button class="btn sm toggle" id="find-regex" aria-pressed="false" title="Expressão regular">.*</button>
+            <button class="btn sm ghost" id="find-toggle-replace" aria-expanded="false">Trocar</button>
+            <button class="icon-btn" id="find-close" title="Fechar (Esc)" aria-label="Fechar a busca"><i data-icon="x" data-size="16"></i></button>
+          </div>
+          <div class="find-row" id="find-replace-row" hidden>
+            <input id="find-r" class="field" placeholder="Trocar por" aria-label="Texto de troca" autocomplete="off" spellcheck="false">
+            <button class="btn sm" id="find-replace-one">Trocar</button>
+            <button class="btn sm" id="find-replace-all">Trocar tudo</button>
+          </div>
+          <div class="find-error" id="find-error" role="alert" hidden></div>
+        </div>
+        <div class="view" id="view" data-mode="blocks">
+          <div class="editor-wrap" id="editor-wrap">
+            <pre class="editor-find" id="editor-find" aria-hidden="true"></pre>
+            <pre class="editor-hl" id="editor-hl" aria-hidden="true"></pre>
+            <textarea id="editor" class="editor" spellcheck="false" aria-label="Texto da nota"></textarea>
+          </div>
+          <article id="preview" class="preview" aria-label="Nota renderizada"></article>
+          <div class="blocks" id="blocks"></div>
+        </div>
+      </section>
+
+      <!-- Outras telas: início, grafo, tarefas, tags, configurações, atalhos, plugins -->
+      <section class="page" id="page" hidden></section>
+      </div>
+      <!-- Segunda folha: painel da direita, aberto com "Abrir ao lado" -->
+      <div class="leaf" id="leaf2" hidden></div>
+    </main>
+
+    <!-- Barra de contexto da nota -->
+    <aside class="ctx" id="ctx" aria-label="Contexto da nota">
+      <div class="ctx-scroll" id="ctx-scroll"></div>
+    </aside>
+
+    <footer class="statusbar">
+      <span class="save-state" id="save-state"></span>
+      <span id="status-note" class="hide-sm"></span>
+      <span class="grow"></span>
+      <span id="status-vault" class="hide-sm"></span>
+    </footer>
+  </div>
+
+  <!-- Paleta de comandos e troca rápida de notas -->
+  <div id="palette" class="overlay" hidden>
+    <div class="palette" role="dialog" aria-modal="true" aria-label="Paleta de comandos">
+      <div class="palette-input">
+        <i data-icon="search" data-size="18"></i>
+        <input id="palette-input" type="text" autocomplete="off" aria-label="Pesquisar comandos ou notas">
+      </div>
+      <div id="palette-list" class="palette-list" role="listbox"></div>
+      <div class="palette-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span></div>
+    </div>
+  </div>
+
+  <dialog id="dialog" class="dialog"><h3 id="dialog-title"></h3><div id="dialog-body"></div></dialog>
+  <div id="suggest" class="suggest" role="listbox" aria-label="Sugestões de links" hidden></div>
+  <div id="toast" class="toast" hidden role="status"></div>
+  <input id="import-file" type="file" accept="application/json" hidden>
+  <input id="import-css" type="file" accept=".css,text/css" multiple hidden>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+* text=auto eol=lf
+*.canvas linguist-language=JSON
+*.base linguist-language=JSON
+src/iconcatalog.js linguist-generated=true
