@@ -101,5 +101,5 @@ Nada disso está no código ainda. As ideias que dependem de decisão ficam regi
 
 ## Licença e créditos
 
-Os ícones são do [Lucide](https://lucide.dev) (ISC); veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). O app não
+O código é [MIT](LICENSE). Os ícones são do [Lucide](https://lucide.dev) (ISC); veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). O app não
 depende de nenhum pacote em tempo de execução.
